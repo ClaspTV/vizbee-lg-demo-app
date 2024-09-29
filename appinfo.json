@@ -1,0 +1,23 @@
+{
+    "id": "com.vizbee.demoapp",
+    "version": "1.0.0",
+    "files": [
+        "appinfo.json",
+        "index.html",
+        "js/**/*",
+        "fonts/**/*",
+        "css/**/*",
+        "images/**/*"
+    ],
+    "vendor": "Vizbee Inc",
+    "type": "web",
+    "main": "index.html",
+    "title": "Vizbee Demo App",
+    "icon": "images/vizbee-logo.png",
+    "disableBackHistoryAPI": true,
+    "uiRevision": 3,
+    "requiredPermissions": [
+        "time.query",
+        "activity.operation"
+    ]
+}
