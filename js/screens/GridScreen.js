@@ -82,7 +82,9 @@ export default class GridScreen {
      */
     handleLeftArrow() {
         console.log("handleLeftArrow()");
-        // Circular navigation: if at the first item, wrap to the last
+        if(this.currentFocusedItemIndex === 0) {
+            return;
+        }
         this.currentFocusedItemIndex = (this.currentFocusedItemIndex - 1 + this.cards.length) % this.cards.length;
         this.updateFocus();
     }
@@ -93,7 +95,9 @@ export default class GridScreen {
      */
     handleRightArrow() {
         console.log("handleRightArrow()");
-        // Circular navigation: if at the last item, wrap to the first
+        if(this.currentFocusedItemIndex === this.cards.length - 1) {
+            return;
+        }
         this.currentFocusedItemIndex = (this.currentFocusedItemIndex + 1) % this.cards.length;
         this.updateFocus();
     }

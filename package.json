@@ -19,6 +19,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "package": "chmod +x generate-package.sh; ./generate-package.sh build packages",
+    "dev": "chmod +x install-package.sh; ./install-package.sh ./packages/com.vizbee.demoapp_1.0.0_all.ipk",
     "clean": "rm -rf build packages"
   },
   "author": "",
