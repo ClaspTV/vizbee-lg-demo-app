@@ -1,6 +1,6 @@
 {
-    "id": "com.vizbee.demoapp",
-    "version": "1.0.0",
+    "id": "com.vizbeesso.demoapp",
+    "version": "1.0.1",
     "files": [
         "appinfo.json",
         "index.html",

@@ -248,7 +248,7 @@ function toggleScreen(screen) {
  */
 function loadAndInitVizbee() {
     listenAndIntiVizbee();
-    return addScript("http://10.0.0.14:8080/vizbee_vtv_sdk_v2.js?seed="+Math.random());
+    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
 }
 
 /**
@@ -262,33 +262,34 @@ function listenAndIntiVizbee() {
             vzbInstance.start('vzb9530844987');
             setDeeplinkHandler();
 
-            setTimeout(() => {
-                // Load and initialize Vizbee Home SSO SDK
-                loadAndInitVizbeeHomeSSO();
-            }, 5000);
+            // Load and initialize Vizbee Home SSO SDK
+            loadAndInitVizbeeHomeSSO();
         }
     });
 }
 
 function loadAndInitVizbeeHomeSSO() {
     listenAndIntiVizbeeHomeSSO();
-    return addScript("http://10.0.0.14:8081/bundle.js?seed="+Math.random());
+    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
 }
 
 function listenAndIntiVizbeeHomeSSO() {
-    window.addEventListener('VIZBEE_HOMESSO_SDK_READY', () => {
+    window.addEventListener('vizbee-homesso-sdk-ready', () => {
         if (window.vizbee1.homesso) {
             console.log(`listenAndIntiVizbeeHomeSSO - initiating vizbee homesso sdk now ...`);
             const vzbHomeSSOContext = vizbee1.homesso.HomeSSOContext.getInstance();
             const vzbHomeSSOManager = vzbHomeSSOContext.getHomeSSOManager();
             vzbHomeSSOManager.setSignInHandler((signInInfo, statusCallback) => {
-              // Handle sign in
-              profileScreen.handleSignIn(signInInfo, statusCallback);
+                console.log('CurrentScreen: ', currentScreen);
+                if(currentScreen != 'player') {
+                    // Handle sign in
+                    profileScreen.handleSignIn(signInInfo, statusCallback);
+                }
             });
 
             vzbHomeSSOManager.setSignInInfoGetter(() => {
-              // Get sign in info
-              return profileScreen.getSignInInfo();
+                // Get sign in info
+                return profileScreen.getSignInInfo();
             });
         }
     });

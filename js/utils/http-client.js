@@ -1,6 +1,4 @@
-// src/utils/http-client.js
-
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(message, status, response) {
     super(message);
     this.name = 'HttpError';
@@ -9,18 +7,37 @@ class HttpError extends Error {
   }
 }
 
-class HttpClient {
-  constructor(baseUrl = '', defaultConfig = {}) {
+export class HttpClient {
+  constructor(baseUrl = '', defaultConfig = {}, defaultHeaders = {}) {
     this.baseUrl = baseUrl;
+    this.defaultHeaders = new Headers({
+      'Content-Type': 'application/json',
+      ...defaultHeaders,
+    });
     this.defaultConfig = {
       timeout: 10000, // 10 seconds default timeout
-      retries: 3,     // Default retry attempts
+      retries: 3, // Default retry attempts
       retryDelay: 1000, // Default delay between retries in ms
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.defaultHeaders,
       ...defaultConfig,
     };
+  }
+
+  // Helper method to merge headers
+  mergeHeaders(configHeaders) {
+    const merged = new Headers(this.defaultHeaders);
+    
+    if (configHeaders) {
+      const headers = configHeaders instanceof Headers
+        ? configHeaders
+        : new Headers(configHeaders);
+      
+      headers.forEach((value, key) => {
+        merged.set(key, value);
+      });
+    }
+    
+    return merged;
   }
 
   async fetchWithTimeout(url, config) {
@@ -29,8 +46,12 @@ class HttpClient {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      // Merge headers before making the request
+      const headers = this.mergeHeaders(config.headers);
+      
       const response = await fetch(url, {
         ...config,
+        headers,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -43,7 +64,7 @@ class HttpClient {
 
   async handleResponse(response) {
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new HttpError(
         response.statusText || 'Request failed',
@@ -69,8 +90,11 @@ class HttpClient {
         attempt < (config.retries || this.defaultConfig.retries) &&
         (error instanceof HttpError || error instanceof TypeError)
       ) {
-        await new Promise(resolve =>
-          setTimeout(resolve, config.retryDelay || this.defaultConfig.retryDelay)
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            config.retryDelay || this.defaultConfig.retryDelay
+          )
         );
         return this.retryRequest(url, config, attempt + 1);
       }
@@ -80,6 +104,18 @@ class HttpClient {
 
   buildUrl(endpoint) {
     return `${this.baseUrl}${endpoint}`;
+  }
+
+  // Method to update default headers
+  setDefaultHeaders(headers) {
+    Object.entries(headers).forEach(([key, value]) => {
+      this.defaultHeaders.set(key, value);
+    });
+  }
+
+  // Method to get current default headers
+  getDefaultHeaders() {
+    return new Headers(this.defaultHeaders);
   }
 
   async get(endpoint, config = {}) {
@@ -117,43 +153,28 @@ class HttpClient {
   }
 }
 
-// Export both the class and a default instance
+// Export a default instance
 export const httpClient = new HttpClient();
-export default HttpClient;
 
 /*****************/
 // Basic usage
 /*****************/
 
-// Import the client
-// import HttpClient from './utils/http-client';
+// Create instance with custom default headers
+// const api = new HttpClient('https://api.example.com', {}, {
+//   'Authorization': 'Bearer default-token',
+//   'Custom-Header': 'default-value'
+// });
 
-// Create an instance with base URL
-// const api = new HttpClient('https://api.example.com');
-
-// Example usage
-// async function fetchUserData(userId) {
-//   try {
-//     const response = await api.get(`/users/${userId}`);
-//     return response.data;
-//   } catch (error) {
-//     if (error instanceof HttpError) {
-//       console.error(`Request failed with status: ${error.status}`);
-//     }
-//     throw error;
+// Make request with additional headers
+// const response = await api.get('/users', {
+//   headers: {
+//     'Request-ID': '123',
+//     'Custom-Header': 'override-value'
 //   }
-// }
+// });
 
-// POST example
-// async function createUser(userData) {
-//   try {
-//     const response = await api.post('/users', userData, {
-//       timeout: 5000,
-//       retries: 2
-//     });
-//     return response.data;
-//   } catch (error) {
-//     console.error('Failed to create user:', error);
-//     throw error;
-//   }
-// }
+// Update default headers
+// api.setDefaultHeaders({
+//   'Authorization': 'Bearer new-token'
+// });

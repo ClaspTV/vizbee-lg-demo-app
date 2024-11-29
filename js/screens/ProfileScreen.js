@@ -1,4 +1,4 @@
-import HttpClient from './../utils/http-client';
+import { HttpClient } from './../utils/http-client';
 
 /**
  * ProfileScreen class manages the profile view and handles user authentication state.
@@ -17,16 +17,16 @@ export default class ProfileScreen {
         this.signInInfo = null;
         this.isMobileUserSignedIn = false;
 
+        this.isVideoPlayerActive = false;
+
         // TODO: Replace with actual device ID
         this.deviceId = "test-device-id";
         this.deviceInfo = null;
 
         this.api = new HttpClient('https://homesso.vizbee.tv');
 
-        // TODO: Remove this after testing
-        this.isSignedIn = false;
-        this.userEmail = null;
-        localStorage.removeItem('userEmail');
+        this.isSignInInProgress = false;
+        this.regCode = null;
     }
 
     /**
@@ -122,7 +122,32 @@ export default class ProfileScreen {
      * @returns {string} HTML content for the profile view
      */
     getProfileContent() {
-        if (this.isSignedIn) {
+        if (this.isSignInInProgress) {
+            if(!this.regCode) {
+                return `
+                    <div class="profile-card">
+                        <div class="profile-content">
+                            <div class="profile-section signing-in">
+                                <p class="signin-instruction">Generating Regcode ...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            else {
+                return `
+                    <div class="profile-card">
+                        <div class="profile-content">
+                            <div class="profile-section signing-in">
+                                <h2>Log into your cable provider.</h2>
+                                <p class="signin-instruction">Please go to xyz.com on your computer or mobile and enter the code below</p>
+                                <h1>${this.regCode}</h1>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (this.isSignedIn) {
             return `
                 <div class="profile-card">
                     <div class="profile-content">
@@ -181,11 +206,30 @@ export default class ProfileScreen {
     /**
      * Handle user signout.
      */
-    handleSignout() {
+    async handleSignout() {
         // Clear auth state
-        this.isSignedIn = false;
-        this.userEmail = null;
-        localStorage.removeItem('userEmail');
+        
+        try {
+            const signoutResponse = await this.api.post('/v1/signout', 
+                {}, 
+                {
+                    headers: {
+                        'Authorization': this.userAuthToken
+                    },
+                    timeout: 5000,
+                    retries: 2
+                }
+            );
+            if ((signoutResponse && signoutResponse.data && !signoutResponse.data.error) || 
+                (signoutResponse && !signoutResponse.error)) {
+                this.isSignedIn = false;
+                this.userEmail = null;
+                localStorage.removeItem('userEmail');
+                this.userAuthToken = null;
+            }
+        } catch (error) {
+            console.error('Failed to sign out user:', error);
+        }
         
         // Update UI
         this.setupOrUpdateUI();
@@ -238,8 +282,11 @@ export default class ProfileScreen {
             return;
         }
 
-        // TODO: Use this info if needed (to skip regcode screen on receiver app)
         // this.isMobileUserSignedIn = this.signInInfo.is_signed_in;
+        if(!this.signInInfo.is_signed_in) {
+            this.isSignInInProgress = true;
+            this.setupOrUpdateUI();
+        }
 
         console.info('User is NOT signed in');
         try {
@@ -254,6 +301,8 @@ export default class ProfileScreen {
             );
             if (regCodeResponse.data && regCodeResponse.data.code) {
                 const regCode = regCodeResponse.data.code;
+                this.regCode = regCode;
+                this.setupOrUpdateUI();
                 
                 // Notify progress with registration code
                 const progressSignInStatus = new vizbee1.homesso.messages.ProgressStatus(this.signInInfo.stype, { regcode: regCode });
@@ -295,6 +344,9 @@ export default class ProfileScreen {
             );
 
             if (pollingResponse.data && pollingResponse.data.status === "done") {
+
+                this.userAuthToken = pollingResponse.data.authToken;
+
                 // Clear the polling interval
                 if (this.pollingInterval) {
                     clearInterval(this.pollingInterval);
@@ -310,11 +362,15 @@ export default class ProfileScreen {
                 const successSignInStatus = new vizbee1.homesso.messages.SuccessStatus(this.signInInfo.stype, this.userEmail, { email: this.userEmail } );
                 statusCallback(successSignInStatus);
 
+                this.isSignInInProgress = false;
+                this.regCode = null;
                 return true;
             }
             return false;
         } catch (error) {
             console.error('Polling failed:', error);
+            this.isSignInInProgress = false;
+            this.regCode = null;
             return false;
         }
     }
@@ -343,6 +399,7 @@ export default class ProfileScreen {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = null;
                 this.setupOrUpdateUI();
+                this.updateFocus();
             } else if (attempts >= maxAttempts) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = null;
