@@ -208,6 +208,16 @@ function handleEnter(e) {
  * Handle back button press.
  */
 function handleBack(e) {
+    
+    if(currentFocusedScreen === 'sidebar') {
+        sideNav.handleBack();
+        return;
+    }
+
+    if (profileScreen && profileScreen.isSignInInProgress) {
+        profileScreen.cancelSignIn();
+        return;
+    }
     if(currentFocusedScreen === 'grid') {
         gridScreen.handleBack();
         return;
@@ -247,19 +257,20 @@ function toggleScreen(screen) {
  * @returns {Promise} A promise that resolves when the Vizbee script is loaded.
  */
 function loadAndInitVizbee() {
-    listenAndIntiVizbee();
-    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
+    listenAndInitVizbeeContinuity();
+    // return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
+    return addScript("http://10.0.0.14:8080/vizbee_vtv_sdk_v2.js?seed="+Math.random());
 }
 
 /**
  * Set up listener for Vizbee SDK initialization and initialize the SDK.
  */
-function listenAndIntiVizbee() {
+function listenAndInitVizbeeContinuity() {
     window.addEventListener('VIZBEE_SDK_READY', () => {
         if (window.vizbee) {
-            console.log(`listenAndIntiVizbee - initiating vizbee sdk now ...`);
+            console.log(`listenAndInitVizbeeContinuity - initiating vizbee sdk now ...`);
             const vzbInstance = window.vizbee.continuity.ContinuityContext.getInstance();
-            vzbInstance.start('vzb9530844987');
+            vzbInstance.start('vzb1703223811');
             setDeeplinkHandler();
 
             // Load and initialize Vizbee Home SSO SDK
@@ -269,30 +280,94 @@ function listenAndIntiVizbee() {
 }
 
 function loadAndInitVizbeeHomeSSO() {
-    listenAndIntiVizbeeHomeSSO();
-    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
+    listenAndInitVizbeeHomeSSO();
+    // return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
+    return addScript("http://10.0.0.14:8081/bundle.js?seed="+Math.random());
+    
 }
 
-function listenAndIntiVizbeeHomeSSO() {
-    window.addEventListener('vizbee-homesso-sdk-ready', () => {
-        if (window.vizbee1.homesso) {
-            console.log(`listenAndIntiVizbeeHomeSSO - initiating vizbee homesso sdk now ...`);
-            const vzbHomeSSOContext = vizbee1.homesso.HomeSSOContext.getInstance();
-            const vzbHomeSSOManager = vzbHomeSSOContext.getHomeSSOManager();
-            vzbHomeSSOManager.setSignInHandler((signInInfo, statusCallback) => {
-                console.log('CurrentScreen: ', currentScreen);
-                if(currentScreen != 'player') {
-                    // Handle sign in
-                    profileScreen.handleSignIn(signInInfo, statusCallback);
-                }
-            });
-
-            vzbHomeSSOManager.setSignInInfoGetter(() => {
-                // Get sign in info
-                return profileScreen.getSignInInfo();
-            });
+function listenAndInitVizbeeHomeSSO() {
+  if (window.vizbeehomesso) {
+    initVizbeeHomeSSO();
+  } else {
+    window.addEventListener('VIZBEE_HOMESSO_READY', () => {
+        if (window.vizbeehomesso) {
+          initVizbeeHomeSSO();
         }
     });
+  }
+}
+
+function initVizbeeHomeSSO() {
+    console.log(`listenAndInitVizbeeHomeSSO - initiating vizbee homesso sdk now ...`);
+    const vzbHomeSSOContext = vizbeehomesso.HomeSSOContext.getInstance();
+    const vzbHomeSSOManager = vzbHomeSSOContext.getHomeSSOManager();
+    vzbHomeSSOManager.setSignInHandler((signInInfo, statusCallback) => {
+        console.log('Index::setSignInHandler received');
+        console.log('CurrentScreen: ', currentScreen);
+        if(currentScreen != 'player') {
+            // Handle sign in
+
+            const isUserSignedInMobile = signInInfo && signInInfo.sinfo && signInInfo.sinfo.is_signed_in;
+            // Switch to profile screen first only if user is not signed in on mobile
+            if(!isUserSignedInMobile) {
+
+                handleScreenSwitch();
+                profileScreen.updateFocus();
+            }
+
+            // Then handle sign in
+            profileScreen.handleSignIn(signInInfo, statusCallback);
+        }
+    });
+
+    vzbHomeSSOManager.setSignInInfoGetter(() => {
+        // Get sign in info
+        return profileScreen.getSignInInfo();
+    });
+
+    const homeSSOUIManager = vzbHomeSSOContext.getHomeSSOUIManager();
+    homeSSOUIManager.setTheme({
+        primaryColor: "blue",
+    });
+
+    homeSSOUIManager.setSuccessSignInModalConfig({
+        descriptionTextFontColor: "green"
+    });
+
+    // homeSSOUIManager.setSignInModalConfig({
+    //     successPreference: {
+    //         options: {
+    //             titleText: "Please wait, signing in ...",
+    //             titleTextFontFamily: "Arial",
+    //             titleTextFontColor: "red",
+    //             titleTextFontSize: "50px",
+    //         }
+    //     }
+    // });
+
+    // homeSSOUIManager.setTheme({
+    //     theme: {
+    //         primaryColor: "#FF0000",
+    //     }
+    // });
+
+    // homeSSOUIManager.setSignInModalConfig({
+    //     modalConfig: {
+    //         successPreference: {
+    //             titleText: "Please wait, signing in ...",
+    //         }
+    //     }
+    // });
+}
+
+function handleScreenSwitch() {
+    currentScreen = 'profile';
+    sideNav.switchToProfile();
+    sideNav.currentFocusedIndex = 1;
+    sideNav.setActiveNavItem();
+    sideNav.compressSidebar();
+    currentFocusedScreen = 'profile';
 }
 
 /**
@@ -303,10 +378,28 @@ function setDeeplinkHandler() {
         const vizbeeHandlersInstance = MyVizbeeHandlers.getInstance(playerScreen);
         const vzbInstance = vizbee.continuity.ContinuityContext.getInstance();
         vzbInstance.getAppAdapter().setDeeplinkHandler((videoInfo) => {
+            console.log('Index::setDeeplinkHandler received');
+            if (profileScreen && profileScreen.isSignInInProgress) {
+                profileScreen.pendingDeeplink = videoInfo;
+                return;
+            }
             toggleScreen('player');
+            currentScreen = "player";
             currentFocusedScreen = "player";
             vizbeeHandlersInstance.deeplinkHandler(videoInfo);
         });
+    }
+}
+
+function servePendingDeeplink() {
+    console.log('Index::servePendingDeeplink');
+    if (profileScreen && profileScreen.pendingDeeplink) {
+        console.log('Index::servePendingDeeplink - pendingDeeplink found');
+        toggleScreen('player');
+        currentFocusedScreen = "player";
+        const vizbeeHandlersInstance = MyVizbeeHandlers.getInstance(playerScreen);
+        vizbeeHandlersInstance.deeplinkHandler(profileScreen.pendingDeeplink);
+        profileScreen.pendingDeeplink = null;
     }
 }
 
@@ -339,3 +432,5 @@ function addScript(src, integrity = null, crossorigin = null) {
 }
 
 // [END] Vizbee Integration
+
+window.servePendingDeeplink = servePendingDeeplink;

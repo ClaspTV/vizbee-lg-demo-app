@@ -53,7 +53,7 @@ export default class PlayerScreen {
             },
             tweaks: {
                 file_protocol: true,
-                app_id: "com.vizbee.demoapp",
+                app_id: "com.vizbeehomesso.demoapp",
                 BACKWARD_BUFFER_PURGE_INTERVAL: 10,
             },
             buffer: bufferConfig,

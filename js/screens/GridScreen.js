@@ -63,13 +63,7 @@ export default class GridScreen {
      * Update the focus to the currently selected card.
      */
     updateFocus() {
-        console.log("updateFocus()");
-        this.cards.forEach((card, index) => {
-            if (index === this.currentFocusedItemIndex) {
-                console.log("updateFocus() - updating focus to index", index);
-                card.focus();
-            }
-        });
+        this.cards[this.currentFocusedItemIndex].focus();
     }
 
     //-----------------
@@ -81,7 +75,6 @@ export default class GridScreen {
      * Moves the focus to the previous card in the grid.
      */
     handleLeftArrow() {
-        console.log("handleLeftArrow()");
         if(this.currentFocusedItemIndex === 0) {
             return;
         }
@@ -94,7 +87,6 @@ export default class GridScreen {
      * Moves the focus to the next card in the grid.
      */
     handleRightArrow() {
-        console.log("handleRightArrow()");
         if(this.currentFocusedItemIndex === this.cards.length - 1) {
             return;
         }

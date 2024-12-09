@@ -1,4 +1,4 @@
-import { HttpClient } from './../utils/http-client';
+import { HttpClient } from '../utils/http-client';
 
 /**
  * ProfileScreen class manages the profile view and handles user authentication state.
@@ -10,6 +10,7 @@ export default class ProfileScreen {
     constructor() {
         this.isSignedIn = false;
         this.userEmail = null;
+
         this.container = null;
         this.currentFocusedElement = null;
         this.focusableElements = [];
@@ -19,8 +20,6 @@ export default class ProfileScreen {
 
         this.isVideoPlayerActive = false;
 
-        // TODO: Replace with actual device ID
-        this.deviceId = "test-device-id";
         this.deviceInfo = null;
 
         this.api = new HttpClient('https://homesso.vizbee.tv');
@@ -33,12 +32,13 @@ export default class ProfileScreen {
      * Initialize the profile screen by checking authentication state and setting up the UI.
      */
     init() {
-        this.listenForDeviceId();
-        this.checkAuthState();
-        this.setupOrUpdateUI();
+        this.listenForDeviceId(() => {
+            this.checkAuthState();
+            this.setupOrUpdateUI();
+        });
     }
 
-    listenForDeviceId() {
+    listenForDeviceId(cb) {
         try {
             if (window.webOS) {
 
@@ -52,9 +52,11 @@ export default class ProfileScreen {
                         if(inResponse && inResponse.idList && inResponse.idList[0]) {
                             this.deviceId = inResponse.idList[0].idValue;
                         }
+                        cb();
                     },
                     onFailure: (inError) => { 
                         console.warn("LGWebOSNativeDeviceInfo::constructor - failed to fetch deviceId");
+                        cb();
                     }
                 });
 
@@ -62,10 +64,12 @@ export default class ProfileScreen {
                     if(deviceRes) {
                         this.deviceInfo = deviceRes;
                     }
+                    cb();
                 });
             }
         } catch (error) {
             console.warn("LGWebOSNativeDeviceInfo::constructor - failed to fetch deviceId and modelName");
+            cb();
         }
     }
 
@@ -73,9 +77,17 @@ export default class ProfileScreen {
      * Check the current authentication state.
      */
     checkAuthState() {
+        // if user NOT signed in, 
+        //      set isSignedIn to false
+        //      set userEmail to null
+        // if user signed in
+        //      set isSignedIn to true
+        //      set userEmail from localStorage
         if (localStorage.getItem('userEmail')) {
             this.isSignedIn = true;
             this.userEmail = localStorage.getItem('userEmail');
+        } else {
+            this.clearUserInfo();
         }
     }
 
@@ -122,7 +134,7 @@ export default class ProfileScreen {
      * @returns {string} HTML content for the profile view
      */
     getProfileContent() {
-        if (this.isSignInInProgress) {
+        if (this.isSignInInProgress && !this.isMobileUserSignedIn) {
             if(!this.regCode) {
                 return `
                     <div class="profile-card">
@@ -220,15 +232,10 @@ export default class ProfileScreen {
                     retries: 2
                 }
             );
-            if ((signoutResponse && signoutResponse.data && !signoutResponse.data.error) || 
-                (signoutResponse && !signoutResponse.error)) {
-                this.isSignedIn = false;
-                this.userEmail = null;
-                localStorage.removeItem('userEmail');
-                this.userAuthToken = null;
-            }
+            this.clearUserInfo();
         } catch (error) {
             console.error('Failed to sign out user:', error);
+            this.clearUserInfo();
         }
         
         // Update UI
@@ -256,10 +263,21 @@ export default class ProfileScreen {
     // SignIn handling methods
 
     getSignInInfo() {
+        if(!this.isSignedIn) {
+            return Promise.resolve([]);
+        }
+
         return Promise.resolve([{
-            signInType: "d2c",
-            isSignedIn: this.isSignedIn,
-            userLogin: this.userEmail
+            userLoginType: this.signInType,
+            userLogin: this.userEmail,
+            userName: "Sarvesh",
+            userSubscriptionRenewalType: "monthly",
+            userSubscriptionType: "subscriptionType-1",
+            userSubscriptionValue: "subscriptionValue-1",
+            userAdditionalInfo: {
+                customKey1: "customValue1",
+                customKey2: "customValue2"
+            },
         }]);
     }
 
@@ -270,6 +288,8 @@ export default class ProfileScreen {
      */
     async handleSignIn(signInInfo, statusCallback) {
         console.log('Handling sign in:', signInInfo);
+
+        this.statusCallback = statusCallback;
 
         if(this.isSignedIn) {
             console.log('User is already signed in');
@@ -282,9 +302,9 @@ export default class ProfileScreen {
             return;
         }
 
-        // this.isMobileUserSignedIn = this.signInInfo.is_signed_in;
-        if(!this.signInInfo.is_signed_in) {
-            this.isSignInInProgress = true;
+        this.isSignInInProgress = true;
+        this.isMobileUserSignedIn = this.signInInfo.is_signed_in;
+        if(!this.isMobileUserSignedIn) {
             this.setupOrUpdateUI();
         }
 
@@ -305,7 +325,7 @@ export default class ProfileScreen {
                 this.setupOrUpdateUI();
                 
                 // Notify progress with registration code
-                const progressSignInStatus = new vizbee1.homesso.messages.ProgressStatus(this.signInInfo.stype, { regcode: regCode });
+                const progressSignInStatus = new vizbeehomesso.messages.ProgressStatus(this.signInInfo.stype, { regcode: regCode });
                 statusCallback(progressSignInStatus);
 
                 // Start polling for sign-in status
@@ -314,8 +334,10 @@ export default class ProfileScreen {
         } catch (error) {
             console.error('Failed to get registration code:', error);
 
-            const errorSignInStatus = new vizbee1.homesso.messages.FailureStatus(this.signInInfo.stype, 'Failed to get registration code', false, error);
+            const errorSignInStatus = new vizbeehomesso.messages.FailureStatus(this.signInInfo.stype, 'Failed to get registration code', false, error);
             statusCallback(errorSignInStatus);
+            console.error('Calling servePendingDeeplink');
+            window.servePendingDeeplink();
         }
     }
 
@@ -326,11 +348,6 @@ export default class ProfileScreen {
      * @returns {Promise<void>}
      */
     async pollSignInStatus(regCode, statusCallback) {
-        if(this.isSignedIn) {
-            console.log('User is already signed in');
-            return true;
-        }
-
         try {
             const pollingResponse = await this.api.post('/v1/accountregcode/poll', 
                 { 
@@ -343,8 +360,10 @@ export default class ProfileScreen {
                 }
             );
 
+            console.log('PollSignInStatus: Polling response:', pollingResponse);
             if (pollingResponse.data && pollingResponse.data.status === "done") {
 
+                console.log('Sign in successful:', pollingResponse.data);
                 this.userAuthToken = pollingResponse.data.authToken;
 
                 // Clear the polling interval
@@ -356,19 +375,21 @@ export default class ProfileScreen {
                 // Update sign-in state
                 this.isSignedIn = true;
                 this.userEmail = pollingResponse.data.email;
+                this.signInType = this.signInInfo && this.signInInfo.stype;
                 localStorage.setItem('userEmail', this.userEmail);
 
                 // Notify success
-                const successSignInStatus = new vizbee1.homesso.messages.SuccessStatus(this.signInInfo.stype, this.userEmail, { email: this.userEmail } );
+                const successSignInStatus = new vizbeehomesso.messages.SuccessStatus(this.signInInfo.stype, this.userEmail, { email: this.userEmail } );
                 statusCallback(successSignInStatus);
 
                 this.isSignInInProgress = false;
                 this.regCode = null;
                 return true;
             }
+            console.log('PollSignInStatus: Sign in not done yet:', pollingResponse.data);
             return false;
         } catch (error) {
-            console.error('Polling failed:', error);
+            console.error('PollSignInStatus: Polling failed:', error);
             this.isSignInInProgress = false;
             this.regCode = null;
             return false;
@@ -400,13 +421,34 @@ export default class ProfileScreen {
                 this.pollingInterval = null;
                 this.setupOrUpdateUI();
                 this.updateFocus();
+                console.log('Sign in successful, calling servePendingDeeplink');
+                window.servePendingDeeplink();
             } else if (attempts >= maxAttempts) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = null;
 
-                const errorSignInStatus = new vizbee1.homesso.messages.FailureStatus(this.signInInfo.stype, 'Sign in timeout', false);
+                const errorSignInStatus = new vizbeehomesso.messages.FailureStatus(this.signInInfo.stype, 'Sign in timeout', false);
                 statusCallback(errorSignInStatus);
+                console.error('Sign in timeout, calling servePendingDeeplink');
+                window.servePendingDeeplink();
             }
         }, 1000); // Poll every 1 second
+    }
+
+    cancelSignIn() {
+        this.isSignInInProgress = false;
+        this.regCode = null;
+        this.setupOrUpdateUI();
+
+        const errorSignInStatus = new vizbeehomesso.messages.FailureStatus(this.signInInfo.stype, 'User cancelled the signin', true);
+        this.statusCallback(errorSignInStatus);
+        window.servePendingDeeplink();
+    }
+
+    clearUserInfo() {
+        localStorage.removeItem('userEmail');
+        this.isSignedIn = false;
+        this.userEmail = null;
+        this.userAuthToken = null;
     }
 }
