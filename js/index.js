@@ -214,12 +214,19 @@ function handleBack(e) {
         return;
     }
 
-    if (profileScreen && profileScreen.isSignInInProgress) {
-        profileScreen.cancelSignIn();
-        return;
+    if (currentFocusedScreen === 'profile') {
+        if (profileScreen) {
+            if(profileScreen.isSignInInProgress) {
+                profileScreen.cancelSignIn();
+                return;
+            } else {
+                handleLeftArrow();
+            }
+        } 
     }
+
     if(currentFocusedScreen === 'grid') {
-        gridScreen.handleBack();
+        handleLeftArrow();
         return;
     } 
     if(currentFocusedScreen === 'player') {
