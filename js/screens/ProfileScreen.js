@@ -436,6 +436,8 @@ export default class ProfileScreen {
     }
 
     cancelSignIn() {
+        clearInterval(this.pollingInterval);
+
         this.isSignInInProgress = false;
         this.regCode = null;
         this.setupOrUpdateUI();
