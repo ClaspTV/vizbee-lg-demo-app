@@ -34,6 +34,7 @@ This project uses Webpack for bundling and Babel for transpiling. The main entry
 To package the app for LG WebOS TV:
 
 1. Run `npm run build` to create a production build.
+1. Run `npm run dev` to create a build and sideload the build to LG TV.
 2. Run `npm run package` to generate the .ipk file.
 
 ### Configuration

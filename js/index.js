@@ -265,8 +265,8 @@ function toggleScreen(screen) {
  */
 function loadAndInitVizbee() {
     listenAndInitVizbeeContinuity();
-    // return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
-    return addScript("http://10.0.0.14:8080/vizbee_vtv_sdk_v2.js?seed="+Math.random());
+    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
+    // return addScript("http://10.0.0.14:8080/vizbee_vtv_sdk_v2.js?seed="+Math.random());
 }
 
 /**
@@ -288,8 +288,8 @@ function listenAndInitVizbeeContinuity() {
 
 function loadAndInitVizbeeHomeSSO() {
     listenAndInitVizbeeHomeSSO();
-    // return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
-    return addScript("http://10.0.0.14:8081/bundle.js?seed="+Math.random());
+    return addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
+    // return addScript("http://10.0.0.14:8081/bundle.js?seed="+Math.random());
     
 }
 
@@ -334,10 +334,10 @@ function initVizbeeHomeSSO() {
         return profileScreen.getSignInInfo();
     });
 
-    // const homeSSOUIManager = vzbHomeSSOContext.getHomeSSOUIManager();
-    // homeSSOUIManager.setTheme({
-    //     primaryColor: "blue",
-    // });
+    const homeSSOUIManager = vzbHomeSSOContext.getHomeSSOUIManager();
+    homeSSOUIManager.setTheme({
+        primaryColor: "#1eabe3",
+    });
 
     // homeSSOUIManager.setSuccessSignInModalConfig({
     //     descriptionTextFontColor: "green"
