@@ -46,7 +46,7 @@ export default class PlayerScreen {
         bufferConfig[bitmovin.player.core.MediaType.Audio] = bufferLevels;
 
         // Player configuration
-        const conf = {
+        this.conf = {
             key: "b55933e9-e033-4e73-bc59-a60e9133fb11",
             playback: {
                 autoplay: true,
@@ -60,22 +60,32 @@ export default class PlayerScreen {
             ui: false,
         };
 
+        this.createPlayer();
+
+        // Set up UI manager
+        const uiManager = new bitmovin.playerui.UIFactory.buildDefaultTvUI(this.player);
+        // Remove default keydown event listeners to prevent conflicts
+        document.removeEventListener('keydown', uiManager.focusVisibilityTracker.eventHandlerMap.keydown, true);
+        document.removeEventListener('keydown', uiManager.currentUi.spatialNavigation.handleKeyEvent, true);
+    }
+
+    createPlayer() {
         // Initialize the player
         const container = document.getElementById('player');
-        this.player = new bitmovin.player.core.Player(container, conf);
+        this.player = new bitmovin.player.core.Player(container, this.conf);
         
         // Set up event listeners
         this.player.on(bitmovin.player.core.PlayerEvent.PlaybackFinished, () => {
             this.simulateKeyDown(10009);
         });
         this.player.on(bitmovin.player.core.PlayerEvent.Ready, () => {
-            
+
             // [BEGIN] Vizbee Integration
 
             // send player instance to vizbee
             // this will make sure to get player events
 			this.createAndSetPlayerAdapter(this.player);
-            
+
             // send videoInfo to vizbee
             this.updateVideoInfo(this.currentPlayingVideoInfo);
 
@@ -87,12 +97,6 @@ export default class PlayerScreen {
         this.player.on(bitmovin.player.core.PlayerEvent.Error, (data) => {
             console.log("Error Event: " + JSON.stringify(data));
         });
-
-        // Set up UI manager
-        const uiManager = new bitmovin.playerui.UIFactory.buildDefaultTvUI(this.player);
-        // Remove default keydown event listeners to prevent conflicts
-        document.removeEventListener('keydown', uiManager.focusVisibilityTracker.eventHandlerMap.keydown, true);
-        document.removeEventListener('keydown', uiManager.currentUi.spatialNavigation.handleKeyEvent, true);
     }
 
     /**
@@ -153,6 +157,14 @@ export default class PlayerScreen {
         // [BEGIN] Vizbee Integration
 
         this.sendStopVideoToVizbee();
+        
+        const vzbInstance = vizbee.continuity.ContinuityContext.getInstance();
+        const vzbPlayerAdapter = vzbInstance.getPlayerAdapter();
+        if(vzbPlayerAdapter) {
+            vzbInstance.removePlayerAdapter(vzbPlayerAdapter);
+        }
+
+        // this.player.destroy();
 
         // [END] Vizbee Integration
     }
@@ -167,6 +179,8 @@ export default class PlayerScreen {
             title: this.currentPlayingVideoInfo.title,
             hls: this.currentPlayingVideoInfo.streamUrl,
         };
+
+        this.createPlayer();
         this.player.load(source);
     }
 
@@ -197,11 +211,11 @@ export default class PlayerScreen {
     createAndSetPlayerAdapter(playerInstance) {
         if (window.vizbee && playerInstance) {
             const vzbInstance = vizbee.continuity.ContinuityContext.getInstance();
-            const currentVizbeePlayerAdapter = vzbInstance.getPlayerAdapter();
-            if(!currentVizbeePlayerAdapter) {
+            // const currentVizbeePlayerAdapter = vzbInstance.getPlayerAdapter();
+            // if(!currentVizbeePlayerAdapter) {
                 const vzbPlayerAdapter = new window.vizbee.continuity.adapters.PlayerAdapter(vizbee.continuity.adapters.PlayerType.BITMOVIN, playerInstance);
                 vzbInstance.setPlayerAdapter(vzbPlayerAdapter);
-            }
+            // }
         }
     }
 

@@ -309,6 +309,7 @@ function initVizbeeHomeSSO() {
     console.log(`listenAndInitVizbeeHomeSSO - initiating vizbee homesso sdk now ...`);
     const vzbHomeSSOContext = vizbeehomesso.HomeSSOContext.getInstance();
     const vzbHomeSSOManager = vzbHomeSSOContext.getHomeSSOManager();
+    vzbHomeSSOManager.init();
     vzbHomeSSOManager.setSignInHandler((signInInfo, statusCallback) => {
         console.log('Index::setSignInHandler received');
         console.log('CurrentScreen: ', currentScreen);
@@ -333,14 +334,14 @@ function initVizbeeHomeSSO() {
         return profileScreen.getSignInInfo();
     });
 
-    const homeSSOUIManager = vzbHomeSSOContext.getHomeSSOUIManager();
-    homeSSOUIManager.setTheme({
-        primaryColor: "blue",
-    });
+    // const homeSSOUIManager = vzbHomeSSOContext.getHomeSSOUIManager();
+    // homeSSOUIManager.setTheme({
+    //     primaryColor: "blue",
+    // });
 
-    homeSSOUIManager.setSuccessSignInModalConfig({
-        descriptionTextFontColor: "green"
-    });
+    // homeSSOUIManager.setSuccessSignInModalConfig({
+    //     descriptionTextFontColor: "green"
+    // });
 
     // homeSSOUIManager.setSignInModalConfig({
     //     successPreference: {
