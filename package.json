@@ -19,7 +19,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "package": "chmod +x generate-package.sh; ./generate-package.sh build packages",
-    "sideload": "chmod +x install-package.sh; ./install-package.sh ./packages/com.vizbeehomesso.demoapp_1.0.1_all.ipk --debug",
+    "sideload": "chmod +x install-package.sh; ./install-package.sh ./packages/com.vizbeehomesso.demoapp_1.0.1_all.ipk lg2023 --debug",
     "clean": "rm -rf build packages",
     "dev": "npm run clean; npm run build; npm run package; npm run sideload"
   },
