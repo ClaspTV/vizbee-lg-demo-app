@@ -252,6 +252,15 @@ function toggleScreen(screen) {
     }
 }
 
+function handleScreenSwitch() {
+    currentScreen = 'profile';
+    sideNav.switchToProfile();
+    sideNav.currentFocusedIndex = 1;
+    sideNav.setActiveNavItem();
+    sideNav.compressSidebar();
+    currentFocusedScreen = 'profile';
+}
+
 // [BEGIN] Vizbee Integration
 
 /**
@@ -260,21 +269,26 @@ function toggleScreen(screen) {
  */
 function loadAndInitVizbee() {
 
-    let isVizbeeContinuitySDKReady = false;
-    let isVizbeeHomeSSOSDKReady = false;
-    window.addEventListener('VIZBEE_SDK_READY', () => {
-        console.log(`Vizbee Continuity SDK script loaded successfully`);
-        if (window.vizbee) {
-            isVizbeeContinuitySDKReady = true;
-        }
-    });
+    let isVizbeeContinuitySDKReady = window.vizbee ? true : false;
+    let isVizbeeHomeSSOSDKReady = window.vizbeehomesso ? true : false;
 
-    window.addEventListener('VIZBEE_HOMESSO_READY', () => {
-        console.log(`Vizbee Home SSO SDK script loaded successfully`);
-        if (window.vizbeehomesso) {
-            isVizbeeHomeSSOSDKReady = true;
-        }
-    });
+    // Usecase: Vizbee SDKs are loaded via javascript dynamically
+    if(isVizbeeContinuitySDKReady) {
+        window.addEventListener('VIZBEE_SDK_READY', () => {
+            console.log(`Vizbee Continuity SDK script loaded successfully`);
+            if (window.vizbee) {
+                isVizbeeContinuitySDKReady = true;
+            }
+        });
+    }
+    if(isVizbeeHomeSSOSDKReady) {
+        window.addEventListener('VIZBEE_HOMESSO_READY', () => {
+            console.log(`Vizbee Home SSO SDK script loaded successfully`);
+            if (window.vizbeehomesso) {
+                isVizbeeHomeSSOSDKReady = true;
+            }
+        });
+    }
 
     // Check if both SDKs are loaded every 500ms
     const maxCount = 40; // 20 seconds
@@ -296,10 +310,7 @@ function loadAndInitVizbee() {
         }
     }, 500);
 
-    console.log(`loadAndInitVizbee - loading vizbee sdk now ...`);
-    // TODO: Change the URLs to the Vizbee SDK URLs
-    addScript("http://10.0.0.14:8080/vizbee_vtv_sdk_v2.js?seed="+Math.random());
-    addScript("http://10.0.0.14:8081/bundle.js?seed="+Math.random());
+    // console.log(`loadAndInitVizbee - loading vizbee sdk now ...`);
     // addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_sdk.js?seed="+Math.random());
     // addScript("https://vzb-origin.s3.us-east-1.amazonaws.com/sdk-legacy/js-homesso-dev/vizbee_homesso_sdk.js?seed="+Math.random());
 }
@@ -373,15 +384,6 @@ function initVizbeeHomeSSO() {
     //         }
     //     }
     // });
-}
-
-function handleScreenSwitch() {
-    currentScreen = 'profile';
-    sideNav.switchToProfile();
-    sideNav.currentFocusedIndex = 1;
-    sideNav.setActiveNavItem();
-    sideNav.compressSidebar();
-    currentFocusedScreen = 'profile';
 }
 
 /**
